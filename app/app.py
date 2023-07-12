@@ -72,7 +72,7 @@ class MyGUI:
         
         
     def predict(self, df):
-        X = self.aux_pipeline.transform(df)
+        X = self.preparation_pipeline.transform(df)
         X = self.pca.transform(X)
         Y = self.final_model.predict(X)
         return Y[0]
