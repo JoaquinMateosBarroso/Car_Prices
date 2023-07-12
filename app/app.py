@@ -1,9 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
-import pandas as pd
 
 import json
-from joblib import load
 
 # open the file in read mode
 with open("data.json", "r") as file:
@@ -12,15 +10,7 @@ with open("data.json", "r") as file:
 
 
 
-
-
 class MyGUI:
-    def prepare_models(self):
-        # load models from the file
-        self.preparation_pipeline = load('../models/preparation_pipeline.joblib')
-        self.pca = load("../models/pca.joblib")
-        self.final_model = load("../models/final_model.joblib")
-        
     def __init__(self, master):
         self.master = master
         master.title("Predict Car Prices")
@@ -34,30 +24,33 @@ class MyGUI:
         self.frame = ttk.Frame(master, padding=20)
         self.frame.pack()
 
-        self.labels = [ttk.Label(self.frame, text=f"{key}:") for key in data["categorical"].keys()]
+        self.labels = [ttk.Label(self.frame, text=f"{key}:") for key in data.keys()]
         for index, label in enumerate(self.labels):
             label.grid(row=index, column=0)
+            
         
-        self.comboboxes = [ttk.Combobox(self.frame, values=value) for value in data["categorical"].values()]
-        for index, combobox in enumerate(self.comboboxes):
+        self.comboboxes = [ttk.Combobox(self.frame, values=value, width=10) for value in data.values()]
+        for index, combobox in enumerate(self.labels):
             combobox.grid(row=index, column=1)
 
+        # self.label1 = ttk.Label(self.frame, text="Enter value 1:")
+        # self.label1.grid(row=0, column=0)
 
-        self.labels2 = [ttk.Label(self.frame, text=f"{key}:") for key in data["numerical"].keys()]
-        for index, label in enumerate(self.labels2):
-            label.grid(row=len(self.labels)+index, column=0)
+        # self.entry1 = ttk.Entry(self.frame, width=10)
+        # self.entry1.grid(row=0, column=1)
 
-        self.sliders = [tk.Scale(self.frame, from_=min(value), to=max(value), orient=tk.HORIZONTAL) for value in data["numerical"].values()]
-        for index, slider in enumerate(self.sliders):
-            slider.grid(row=len(self.labels)+index, column=1)
+        # self.label2 = ttk.Label(self.frame, text="Select a category:")
+        # self.label2.grid(row=20, column=0)
+
         
 
 
 
         self.button = ttk.Button(self.frame, text="Calculate", command=self.calculate_sum)
-        self.button.grid(row=len(self.labels)+len(self.labels2)+1, column=0, columnspan=2)
+        self.button.grid(row=2, column=0, columnspan=2)
 
         self.result = ttk.Label(self.frame, text="")
+<<<<<<< HEAD
         self.result.grid(row=len(self.labels)+len(self.labels2)+2, column=0, columnspan=2)
         
         self.prepare_models()
@@ -76,16 +69,21 @@ class MyGUI:
         X = self.pca.transform(X)
         Y = self.final_model.predict(X)
         return Y[0]
+=======
+        self.result.grid(row=3, column=0, columnspan=2)
+>>>>>>> parent of d23042a (GUI working. Calulus todo)
 
     def calculate_sum(self):
-        print(self.predict(self.generate_df(data)))
+        
+        value1 = int(self.entry1.get())
+        value2 = self.combobox.get()
+        result = value1 + int(value2[-1])
         
         
-        
-
+        self.result.configure(text="Result: " + str(result))
 
 root = tk.Tk()
 # set the size of the window
-root.geometry("800x600")
+# root.geometry("400x200")
 my_gui = MyGUI(root)
 root.mainloop()
