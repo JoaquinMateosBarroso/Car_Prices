@@ -5,8 +5,10 @@ from tkinter import ttk
 import json
 from joblib import load
 
-from getExtraFeatures import *
-
+try:
+    from dataManipulation import userInputFeatures, getExtraFeatures, DataManipulation
+except ModuleNotFoundError:
+    from app.dataManipulation import userInputFeatures, getExtraFeatures, DataManipulation
 
 # open the file in read mode
 try:
@@ -20,13 +22,13 @@ except FileNotFoundError:
 data = json.load(file)
 file.close()
 
+generalDF = pd.concat([pd.read_csv(f'{home}archive/train.csv'), 
+                          pd.read_csv(f'{home}archive/test.csv')])
+
+
 
 class MyGUI:
-    def prepare_models(self):
-        # load models from the file
-        self.preparation_pipeline = load(f'{home}models/preparation_pipeline.joblib')
-        self.pca = load(f'{home}models/pca.joblib')
-        self.final_model = load(f'{home}models/final_model.joblib')
+
 
     def __init__(self, master):
         self.master = master
@@ -42,30 +44,26 @@ class MyGUI:
         self.frame.pack()
 
 
-        # Drop unnecesary categories
-        self.inference_columns = ["Category", ]
-        # data["categorical"].drop(["Category", ], inplace=True)
-
-        categoricalUserInputFeatures = set(data["categorical"].keys()).intersection(set(userInputFeatures))
-        self.labels = [ttk.Label(self.frame, text=f"{key}:") for key in categoricalUserInputFeatures]
+        # Categorical Features Input
+        self.categoricalUserInputFeatures = [key for key in data["categorical"].keys() if key in userInputFeatures]
+        self.labels = [ttk.Label(self.frame, text=f"{key}:") for key in self.categoricalUserInputFeatures]
         for index, label in enumerate(self.labels):
             label.grid(row=index, column=0)
-        
         for value in data["categorical"].values():
             value.sort()
-        
         self.comboboxes = [ttk.Combobox(self.frame, values=value) for value in 
-                           [data["categorical"][feature] for feature in categoricalUserInputFeatures]]
+                           [data["categorical"][feature] for feature in self.categoricalUserInputFeatures]]
         for index, combobox in enumerate(self.comboboxes):
             combobox.grid(row=index, column=1)
 
-        numericalUserInputFeatures = set(data["numerical"].keys()).intersection(set(userInputFeatures))
-        self.labels2 = [ttk.Label(self.frame, text=f"{key}:") for key in numericalUserInputFeatures]
+        # Numerical Features Input
+        self.numericalUserInputFeatures = [key for key in data["numerical"].keys() if key in userInputFeatures]
+        self.labels2 = [ttk.Label(self.frame, text=f"{key}:") for key in self.numericalUserInputFeatures]
         for index, label in enumerate(self.labels2):
             label.grid(row=len(self.labels)+index, column=0)
 
         self.sliders = [tk.Scale(self.frame, from_=min(value), to=max(value), orient=tk.HORIZONTAL) for value in 
-                        [data["numerical"][feature] for feature in numericalUserInputFeatures]]
+                        [data["numerical"][feature] for feature in self.numericalUserInputFeatures]]
         for index, slider in enumerate(self.sliders):
             slider.grid(row=len(self.labels)+index, column=1)
         
@@ -78,38 +76,31 @@ class MyGUI:
         self.result = ttk.Label(self.frame, text="")
         self.result.grid(row=len(self.labels)+len(self.labels2)+2, column=0, columnspan=2)
         
-        self.prepare_models()
+        self.dataManipulation = DataManipulation(home)
+        
 
     def generate_df(self, data):
-        df = pd.DataFrame(columns = list(data["categorical"].keys()) + list(data["numerical"].keys()))
-        for combobox, key in zip(self.comboboxes, data["categorical"].keys()):
+        df = pd.DataFrame(columns = generalDF.columns)
+        for combobox, key in zip(self.comboboxes, self.categoricalUserInputFeatures):
             df.loc[0, key] = combobox.get()
-        for slider, key in zip(self.sliders, data["numerical"].keys()):
+        for slider, key in zip(self.sliders, self.numericalUserInputFeatures):
             df.loc[0, key] = slider.get()
         
-        print(df)
-        getExtraFeatures(df)
+        df = getExtraFeatures(df, generalDF)
         return df
-        
-        
-    def predict(self, df):
 
-        X = self.preparation_pipeline.transform(df)
-        X = self.pca.transform(X.toarray())
-        Y = self.final_model.predict(X)
-        label = ttk.Label(self.frame, text=f"Precio: {Y[0]}")
-        label.grid(row=len(self.labels)+len(self.labels2)+3, column=0)
-        return Y[0]
 
     def calculate_sum(self):
-        print(self.predict(self.generate_df(data)))
-        
+        generated_df = self.generate_df(data)
+        predictedPrice = self.dataManipulation.predict(generated_df)
+        try:
+            self.label.destroy()
+        except AttributeError:
+            pass
+        self.label = ttk.Label(self.frame, text=f'Precio: {predictedPrice:.0f}')
+        self.label.grid(row=len(self.labels)+len(self.labels2)+3, column=0)
         
 
-def getExtraFeatures(df):
-    extraFeatures = list(set(data['categorical']).union(set(data['numerical'])).difference(set(userInputFeatures)))
-    # Hay que arreglar esto; data no es un dataframe, es  un diccionario. Foook
-    df[extraFeatures] = data.loc[data['model'] == df['model'][0]][extraFeatures]
 
 
 root = tk.Tk()
